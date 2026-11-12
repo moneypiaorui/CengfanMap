@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import students from "./seed/students.json";
 import teachers from "./seed/teachers.json";
-import { buildMigrationPlan } from "./plan";
+import { buildMigrationPlan, renderMigrationSql } from "./plan";
 import { parseDirectoryData } from "../shared/directory";
 import { directoryFromRows, directoryQueries } from "../server/directory";
 import type { SqlStatement } from "../server/database";
@@ -46,11 +46,7 @@ describe("initial PostgreSQL migration", () => {
   });
 
   it("the SQL Editor export imports the same complete snapshot", async () => {
-    const exported = await readFile(
-      new URL("./import-initial.sql", import.meta.url),
-      "utf8",
-    );
-    await db.exec(exported);
+    await db.exec(renderMigrationSql(plan.queries));
     expect(directoryFromRows(await execute(directoryQueries))).toEqual(data);
   });
 

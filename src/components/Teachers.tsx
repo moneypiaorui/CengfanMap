@@ -1,4 +1,4 @@
-import type { Teacher } from "../data";
+import type { Teacher } from "../../shared/directory";
 import Icon from "./Icon";
 
 export default function Teachers({ teachers }: { teachers: Teacher[] }) {

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { filterStudents, getProvinceNames } from "../data";
-import type { Student } from "../data";
+import { filterStudents, getProvinceNames } from "../lib/students";
+import type { Student } from "../../shared/directory";
 import Icon from "./Icon";
 
 interface StudentDirectoryProps {

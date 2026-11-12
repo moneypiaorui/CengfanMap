@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import students from "../../db/seed/students.json";
-import { filterStudents as filterRecords } from "./index";
+import { filterStudents as filterRecords } from "./students";
 const filterStudents = (query: string, province: string, city = "") =>
   filterRecords(students, query, province, city);
 describe("classmate search and filtering", () => {

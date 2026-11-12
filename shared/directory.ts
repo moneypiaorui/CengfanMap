@@ -22,7 +22,7 @@ export interface DirectoryData {
   teachers: Teacher[];
 }
 
-export class InvalidDirectoryDataError extends Error {
+class InvalidDirectoryDataError extends Error {
   constructor() {
     super("Invalid directory data");
     this.name = "InvalidDirectoryDataError";

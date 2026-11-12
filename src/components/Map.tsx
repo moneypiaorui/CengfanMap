@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import china from "../data/maps/china.json";
-import type { Student } from "../data";
+import type { Student } from "../../shared/directory";
 import { colorForCount, projectFeatures } from "../lib/map";
 import type { MapFeature } from "../lib/map";
 

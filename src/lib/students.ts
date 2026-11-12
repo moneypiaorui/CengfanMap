@@ -1,5 +1,4 @@
 import type { Student } from "../../shared/directory";
-export type { Student, Teacher, DirectoryData } from "../../shared/directory";
 
 export function getProvinceNames(students: Student[]) {
   return [...new Set(students.map((student) => student.province))].sort(

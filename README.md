@@ -27,13 +27,14 @@
 
 ### 方式一：Neon SQL Editor
 
-打开 [db/import-initial.sql](db/import-initial.sql)，将完整内容放入该数据库的 SQL Editor 执行。文件包含事务、建表、49 条同学记录、6 位教师记录和导入标记。不要只执行选中的部分语句。
-
-源码中的初始快照或建表文件变化后，可重新生成 SQL：
+先安装依赖，再生成 SQL 文件：
 
 ```bash
+npm ci
 npm run db:export
 ```
+
+将生成的 `db/import-initial.sql` 完整内容放入该数据库的 SQL Editor 执行。文件包含事务、建表、49 条同学记录、6 位教师记录和导入标记。不要只执行选中的部分语句。导出无需数据库连接，生成文件不提交到 Git；SQL 与命令行导入共用同一份迁移计划，避免快照重复维护。
 
 ### 方式二：命令行
 
@@ -72,7 +73,9 @@ npm run dev
 开发服务默认使用 5173 端口，开发与生产预览均提供同路径 `/api/directory` 接口。未配置数据库时，接口返回 503，界面展示重试状态；构建本身无需连接数据库。
 
 ```bash
-npm run build       # 前端、接口和迁移代码的类型检查 + 生产构建
+npm run typecheck   # 前端、服务端、迁移、测试和配置的类型检查
+npm run check       # 类型检查、生产构建和单元/数据库测试
+npm run build       # 类型检查 + 生产构建
 npm run preview     # 预览生产前端与本地接口
 npm test            # 数据过滤、PostgreSQL 迁移及接口测试
 CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
@@ -82,13 +85,15 @@ CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
 
 数据库测试使用本地 PostgreSQL 引擎 PGlite，验证完整导入、SQL 导出、幂等、保留修改与删除，以及失败回滚。接口测试验证修改数据库后返回新记录、禁止写入和错误响应不包含连接信息。
 
-浏览器测试使用接口夹具，覆盖桌面与手机的异步加载、错误重试、地图下钻、搜索筛选、教师弹窗、快速开关、动画取消、减少动态效果、键盘焦点与表格滚动。夹具只用于测试；真实 Neon 连接仍须在部署时验证。
+浏览器测试会先构建，再在独立的本地 4180 端口启动生产预览，不复用已有服务。使用接口夹具，覆盖桌面与手机的异步加载、错误重试、地图下钻、搜索筛选、教师弹窗、快速开关、动画取消、减少动态效果、键盘焦点与表格滚动。夹具只用于测试；真实 Neon 连接仍须在部署时验证。
 
 ## 部署
 
 `vercel.json` 配置 Vite 构建、`dist/` 输出和 `api/directory.ts` Node.js Function。首次发布前须完成数据库连接与导入。
 
 **部署完整源码，包含 `api/`、`server/`、`shared/` 和前端文件。仅上传 `dist/` 不会部署数据库读取接口。** 静态 GitHub Pages 等托管方式需要另外提供后端接口。
+
+`.vercelignore` 为 CLI 部署排除本地依赖、测试、迁移快照和生成产物；这些文件不参与线上接口运行。数据库迁移需在部署前单独执行。TypeScript 保留 `.ts` 源码导入，并在服务端打包时转换为 `.js`，确保 Node.js 能解析模块。
 
 生产数据库连接只配置到对应的 Vercel 环境；预览环境应使用独立测试库或 Neon 分支，不复用生产写入权限。环境变量及 `.vercel/` 已排除出 Git。
 
@@ -103,21 +108,21 @@ shared/directory.ts        接口类型与数据验证
 db/
   migrations/001_initial.sql  建表与更新时间触发器
   seed/                    初始同学、教师快照
-  plan.ts                  事务化、幂等导入计划
-  migrate.ts               Neon 导入命令
-  export.ts                SQL Editor 导出命令
-  import-initial.sql       可直接执行的完整 SQL
+  plan.ts                  事务化导入计划与 SQL 渲染
+  migrate.ts               数据库迁移与 SQL 导出的统一入口
 src/
   App.tsx                  原站布局、地图选择和弹窗状态
   hooks/useDirectoryData.ts 接口加载、取消、超时和重试
   components/              地图、教师、录取表格及可访问弹窗
-  data/index.ts            无静态名单的纯搜索与筛选逻辑
   data/maps/               全国与省市 GeoJSON
+  lib/students.ts          同学搜索与地区筛选逻辑
   lib/map.ts               投影与人数色阶
   styles.css               原站框架、现代细节及动效
 public/images/             校名、徽章与教师照片
 tests/app.spec.ts          桌面和手机浏览器回归
 ```
+
+类型和接口校验统一放在 `shared/directory.ts`，组件直接导入类型，不通过数据目录转发。地图资源继续按需加载；全国索引引用的省市地图和数据库引用的教师图片均保留。
 
 ## 界面维护
 

@@ -12,7 +12,9 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "strict": true
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
-  "include": ["src", "api", "server", "shared", "db"]
+  "include": ["src", "api", "server", "shared", "db", "tests", "*.config.ts"]
 }

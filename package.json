@@ -8,12 +8,14 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build --base=./",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build --base=./",
+    "check": "npm run build && npm test",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run src server db",
     "db:migrate": "node --env-file-if-exists=.env.local db/migrate.ts",
-    "db:export": "node db/export.ts",
-    "test:e2e": "playwright test"
+    "db:export": "node db/migrate.ts --export",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

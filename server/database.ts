@@ -5,14 +5,14 @@ export interface SqlStatement {
   values?: unknown[];
 }
 
-export class DatabaseNotConfiguredError extends Error {
+class DatabaseNotConfiguredError extends Error {
   constructor() {
     super("DATABASE_URL or POSTGRES_URL is required");
     this.name = "DatabaseNotConfiguredError";
   }
 }
 
-export function getConnectionString() {
+function getConnectionString() {
   const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!connectionString) throw new DatabaseNotConfiguredError();
   return connectionString;
