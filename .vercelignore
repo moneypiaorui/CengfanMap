@@ -4,9 +4,8 @@ test-results/
 playwright-results/
 playwright-report/
 *.tsbuildinfo
-**/*.test.ts
 tests/
-db/
 playwright.config.ts
 README.md
 .env*
+.github/

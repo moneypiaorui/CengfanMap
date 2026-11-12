@@ -113,11 +113,22 @@ CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
 
 **部署完整源码，包含 `api/`、`server/`、`shared/` 和前端文件。仅上传 `dist/` 不会部署数据库读取接口。** 静态 GitHub Pages 等托管方式需要另外提供后端接口。
 
-`.vercelignore` 为 CLI 部署排除本地依赖、测试、迁移快照和生成产物；这些文件不参与线上接口运行。数据库迁移需在部署前单独执行。TypeScript 保留 `.ts` 源码导入，并在服务端打包时转换为 `.js`，确保 Node.js 能解析模块。
+`.vercelignore` 为 CLI 部署排除本地依赖、浏览器测试、工作流和生成产物。单元测试、迁移文件与初始快照保留给构建检查使用，线上接口仅追踪实际运行依赖。数据库迁移需在部署前单独执行。TypeScript 保留 `.ts` 源码导入，并在服务端打包时转换为 `.js`，确保 Node.js 能解析模块。
 
 生产数据库连接只配置到对应的 Vercel 环境；预览环境应使用独立测试库或 Neon 分支，不复用生产写入权限。环境变量及 `.vercel/` 已排除出 Git。
 
 Vercel 发布与 Git 提交、推送是独立操作，不会自动把云工作区源码保存到 GitHub。
+
+## GitHub 与 CI/CD
+
+Vercel 项目 `cengfan-map` 已绑定 `moneypiaorui/CengfanMap`。推送 `work` 自动生成 Preview；正式发布使用 `main` 分支。稳定开发预览地址为 [cengfan-map-git-work-moneypiaoruis-projects.vercel.app](https://cengfan-map-git-work-moneypiaoruis-projects.vercel.app/)。
+
+- GitHub Actions 的 `CI` 工作流在 `main` / `work` 推送及面向这两个分支的 PR 上运行：安装锁定依赖、类型检查、单元/数据库测试、生产构建及桌面/手机浏览器测试。失败时保留浏览器诊断 7 天。
+- CI 使用 Node.js 24、只读仓库权限，Actions 固定到完整提交 SHA。测试使用本地 PGlite 和接口夹具，不读取真实数据库、登录密钥或 Vercel Token。
+- Vercel Git 集成负责部署，避免另一条 Actions 部署流程重复发版。Vercel 构建执行 `npm run check`，类型、构建或单元测试失败会阻止本次部署就绪。
+- GitHub 浏览器测试独立报告状态；若要将其设置为强制合并/发布条件，应在 GitHub 分支规则或 Vercel Deployment Checks 中将 `Typecheck, unit and browser tests` 设为必需检查。普通 CI 工作流本身不会创建分支保护规则。
+- `work` 的 Preview 环境使用独立 Neon 测试分支及其 Auth；Production 环境使用正式分支。SMTP 配置完成且 CI 通过后，再将经审核的代码合入 `main` 发布。当前任务不自动合并业务功能或运行线上迁移。
+- 数据结构迁移与发布分开执行，CI 不调用 `db:migrate`，避免测试流水线修改线上数据。
 
 ## 目录
 
