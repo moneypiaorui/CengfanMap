@@ -20,7 +20,16 @@ const schema = await readFile(
   new URL("./migrations/001_initial.sql", import.meta.url),
   "utf8",
 );
-const plan = buildMigrationPlan(schema, data);
+const upgrades = [
+  {
+    version: "002_destinations",
+    sql: await readFile(
+      new URL("./migrations/002_destinations.sql", import.meta.url),
+      "utf8",
+    ),
+  },
+];
+const plan = buildMigrationPlan(schema, data, upgrades);
 
 async function execute(queries: SqlStatement[]) {
   return db.transaction(async (transaction) => {

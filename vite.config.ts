@@ -4,7 +4,13 @@ import { directoryMiddleware } from "./server/dev-middleware";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  for (const name of ["DATABASE_URL", "POSTGRES_URL"]) {
+  for (const name of [
+    "DATABASE_URL",
+    "POSTGRES_URL",
+    "NEON_AUTH_BASE_URL",
+    "NEON_AUTH_COOKIE_SECRET",
+    "ADMIN_EMAIL",
+  ]) {
     if (!process.env[name] && env[name]) process.env[name] = env[name];
   }
   return {

@@ -7,10 +7,29 @@
 `浏览器 → GET /api/directory → Neon PostgreSQL`
 
 - 同学、教师信息从接口加载，前端构建不再包含初始同学录或教师名单。
-- 接口只允许 GET/HEAD，不提供公开写入入口。数据库连接变量只供服务端使用。
+- 公开同学录接口只允许 GET/HEAD；填报和审核通过独立接口处理，均要求已验证邮箱。数据库连接变量只供服务端使用。
 - 响应不缓存，刷新页面会重新读取数据库。数据库中修改学校、专业、昵称或顺序无需重新部署前端。
 - 加载失败会提示重试，不会用初始文件冒充数据库返回结果。
 - 教师照片保留为本地图片，数据库保存文件名；图片上传和后台编辑功能不在本次迁移范围内。
+
+## 后续升学与就业去向
+
+- 右侧“更新去向”进入填报，使用邮箱验证码登录；每次填报按年份追加，支持本科 / 硕士 / 博士毕业阶段以及继续升学 / 就业 / 其他去向。
+- 原本科录取信息独立保留。审核通过后，公开“后续去向”记录；地图的“最新去向”按年份、审核时间选取每位同学最近一站，未更新者继续使用本科位置。境外去向在列表显示。
+- 每个已验证账户每小时最多提交 6 次，同一同学只允许该账户保留一条待审核记录；请求 ID 防止网络重试重复写入。
+- “我的提交”仅返回当前账户的记录。邮箱、私人备注、退回原因不进入公开接口。
+- `/#review` 是审核入口，服务器验证签名、签发方、受众、过期时间和邮箱验证状态，再与 `ADMIN_EMAIL` 精确匹配。页面隐藏按钮不能替代服务端权限检查。
+- 管理员可通过或退回，退回必须填写原因；每条记录只能从待审核状态处理一次，并保留审核人和审核时间。
+
+### 登录与发布配置
+
+登录使用 Neon Managed Better Auth，应用通过官方 SDK 的同源 `/api/auth/*` 代理管理 HttpOnly 会话 Cookie，浏览器不依赖第三方 Cookie。提交和审核请求携带 SDK 返回的短期 JWT；退出结束浏览器会话，已签发 JWT 在到期前仍可能有效。
+
+服务端环境变量：`NEON_AUTH_BASE_URL`（对应数据库分支的 Auth URL）、`NEON_AUTH_COOKIE_SECRET`（至少 32 字符的随机值）、`ADMIN_EMAIL`。不要加 `VITE_` 前缀，也不要提交 `.env.local`。
+
+预览使用独立 Neon `work` 分支。**正式启用前需要在正式数据库分支开启 Auth、配置专用 SMTP、添加正式域名并关闭 localhost，然后运行迁移、配置正式环境变量、部署。** 测试分支的默认共享邮件通道只用于开发验证。参见 [Neon Auth 正式发布要求](https://neon.com/docs/auth/production-checklist)。
+
+`@neon/auth` 0.8.2 的固定 fetch 类型与当前 Better Auth 补丁版本存在上游类型冲突。验证码请求统一通过 SDK 的公开 `$fetch` 接口封装，JWT 从其 `getSession().data.session.token` 获取；没有额外安装 Auth 插件或替换托管认证逻辑。
 
 ## 已连接的环境
 
@@ -49,9 +68,10 @@ npm run db:migrate
 
 ### 导入规则
 
-- 使用独立的 `cengfan` schema，包含 `students`、`teachers` 和 `seed_migrations` 三张表。
+- 使用独立的 `cengfan` schema，保留 `students`、`teachers`、`seed_migrations`，并以 `schema_migrations` 记录后续结构迁移。`002_destinations.sql` 新增去向提交表和查询索引。
 - 保留所有原始记录和显示顺序，每条记录使用稳定 UUID。
 - 建表与导入位于同一事务；任一约束失败都会回滚。事务锁避免并行导入冲突。
+- 后续 `db/migrations/*.sql` 按文件名顺序应用并记录校验值；再次运行会跳过，修改已应用文件会拒绝执行，应新建迁移。
 - 初始快照只导入一次。再次执行不会覆盖数据库中的修改、制造重复记录，或恢复已主动删除的记录。
 - `db/seed/*.json` 仅是初始导入快照；后续更新应编辑数据库。结构升级应另建迁移，避免修改已应用的初始快照。
 
@@ -102,11 +122,14 @@ Vercel 发布与 Git 提交、推送是独立操作，不会自动把云工作�
 ## 目录
 
 ```text
-api/directory.ts           Vercel Function 入口
+api/directory.ts           公开名单和已审核去向
+api/submissions.ts         本人提交与提交记录
+api/review.ts              管理员审核
+api/auth/[...path].ts      官方 Neon Auth 同源代理
 server/                    数据库读取、HTTP 响应和本地中间件
 shared/directory.ts        接口类型与数据验证
 db/
-  migrations/001_initial.sql  建表与更新时间触发器
+  migrations/              初始建表与后续结构迁移
   seed/                    初始同学、教师快照
   plan.ts                  事务化导入计划与 SQL 渲染
   migrate.ts               数据库迁移与 SQL 导出的统一入口

@@ -1,6 +1,6 @@
 import Icon from "./Icon";
 
-export type Panel = "teachers" | "students";
+export type Panel = "teachers" | "students" | "update";
 
 interface SideNavProps {
   activePanel: Panel | null;
@@ -25,6 +25,14 @@ export default function SideNav({ activePanel, onSelect }: SideNavProps) {
       >
         <Icon name="students" />
         <span>录取总览</span>
+      </button>
+      <button
+        aria-haspopup="dialog"
+        aria-pressed={activePanel === "update"}
+        onClick={() => onSelect("update")}
+      >
+        <Icon name="update" />
+        <span>更新去向</span>
       </button>
     </nav>
   );

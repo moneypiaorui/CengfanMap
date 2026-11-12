@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, readdir } from "node:fs/promises";
 import { buildMigrationPlan, renderMigrationSql } from "./plan.ts";
 import { runQueries } from "../server/database.ts";
 import { parseDirectoryData } from "../shared/directory.ts";
@@ -17,7 +17,21 @@ async function main() {
     students: JSON.parse(students),
     teachers: JSON.parse(teachers),
   });
-  const plan = buildMigrationPlan(schema, data);
+  const names = (await readdir(new URL("./migrations/", import.meta.url)))
+    .filter(
+      (name) => /^\d+_[a-z_]+\.sql$/.test(name) && name !== "001_initial.sql",
+    )
+    .sort();
+  const upgrades = await Promise.all(
+    names.map(async (name) => ({
+      version: name.replace(/\.sql$/, ""),
+      sql: await readFile(
+        new URL("./migrations/" + name, import.meta.url),
+        "utf8",
+      ),
+    })),
+  );
+  const plan = buildMigrationPlan(schema, data, upgrades);
   if (args[0] === "--export") {
     await writeFile(
       new URL("./import-initial.sql", import.meta.url),

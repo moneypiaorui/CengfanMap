@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import Dialog from "./components/Dialog";
 import Map from "./components/Map";
 import SideNav from "./components/SideNav";
@@ -8,13 +8,18 @@ import Teachers from "./components/Teachers";
 import Icon from "./components/Icon";
 import DirectoryStatus from "./components/DirectoryStatus";
 import useDirectoryData from "./hooks/useDirectoryData";
+import { currentStudents } from "./lib/destinations";
 
-export default function App() {
+const DestinationForm = lazy(() => import("./components/DestinationForm"));
+const ReviewPage = lazy(() => import("./components/ReviewPage"));
+
+function MapApp() {
   const directory = useDirectoryData();
   const [panel, setPanel] = useState<Panel | null>(null);
   const [closing, setClosing] = useState(false);
   const [province, setProvince] = useState("");
   const [city, setCity] = useState("");
+  const [latest, setLatest] = useState(false);
   const [directoryScope, setDirectoryScope] = useState({
     province: "",
     city: "",
@@ -99,7 +104,14 @@ export default function App() {
             <Map
               province={province}
               city={city}
-              students={directory.data.students}
+              students={
+                latest
+                  ? currentStudents(
+                      directory.data.students,
+                      directory.data.destinations,
+                    )
+                  : directory.data.students
+              }
               onProvince={selectProvince}
               onCity={selectCity}
             />
@@ -115,6 +127,29 @@ export default function App() {
             className="map-legend"
             aria-label="同学人数图例：颜色越深，人数越多"
           >
+            <div className="map-mode" role="group" aria-label="地图数据">
+              <button
+                aria-pressed={!latest}
+                onClick={() => {
+                  setLatest(false);
+                  selectProvince("");
+                }}
+              >
+                本科录取
+              </button>
+              <button
+                aria-pressed={latest}
+                onClick={() => {
+                  setLatest(true);
+                  selectProvince("");
+                }}
+              >
+                最新去向
+              </button>
+            </div>
+            {latest && (
+              <p className="map-source-note">未更新的同学仍显示本科位置</p>
+            )}
             <div className="legend-gradient" />
             <div className="legend-ticks">
               {[0, 2, 4, 6, 8, 10].map((count) => (
@@ -139,7 +174,13 @@ export default function App() {
       </div>
       {panel && (
         <Dialog
-          title={panel === "teachers" ? "任课老师" : "录取总览"}
+          title={
+            panel === "teachers"
+              ? "任课老师"
+              : panel === "update"
+                ? "更新去向"
+                : "录取总览"
+          }
           panel={panel}
           closing={closing}
           onClose={requestClose}
@@ -153,9 +194,15 @@ export default function App() {
             />
           ) : panel === "teachers" ? (
             <Teachers teachers={directory.data.teachers} />
+          ) : panel === "update" ? (
+            <Suspense fallback={<p role="status">正在准备填写入口…</p>}>
+              <DestinationForm students={directory.data.students} />
+            </Suspense>
           ) : (
             <StudentDirectory
               students={directory.data.students}
+              destinations={directory.data.destinations}
+              initialLatest={latest}
               key={directoryScope.province + "-" + directoryScope.city}
               initialProvince={directoryScope.province}
               initialCity={directoryScope.city}
@@ -164,5 +211,21 @@ export default function App() {
         </Dialog>
       )}
     </main>
+  );
+}
+
+export default function App() {
+  const [review, setReview] = useState(window.location.hash === "#review");
+  useEffect(() => {
+    const change = () => setReview(window.location.hash === "#review");
+    window.addEventListener("hashchange", change);
+    return () => window.removeEventListener("hashchange", change);
+  }, []);
+  return review ? (
+    <Suspense fallback={<p role="status">正在准备审核入口…</p>}>
+      <ReviewPage />
+    </Suspense>
+  ) : (
+    <MapApp />
   );
 }

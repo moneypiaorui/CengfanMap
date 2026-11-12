@@ -4,6 +4,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/directory.ts": { "maxDuration": 15 }
+    "api/directory.ts": { "maxDuration": 15 },
+    "api/submissions.ts": { "maxDuration": 15 },
+    "api/review.ts": { "maxDuration": 15 },
+    "api/auth/[...path].ts": { "maxDuration": 15 }
   }
 }

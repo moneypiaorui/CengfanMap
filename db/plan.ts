@@ -5,10 +5,20 @@ import type { SqlStatement } from "../server/database.ts";
 
 const seedVersion = "initial-directory-v1";
 
-export function buildMigrationPlan(schema: string, input: DirectoryData) {
+export function buildMigrationPlan(
+  schema: string,
+  input: DirectoryData,
+  upgrades: { version: string; sql: string }[] = [],
+) {
   const data = parseDirectoryData(input);
   const checksum = createHash("sha256")
-    .update(JSON.stringify(data))
+    .update(
+      JSON.stringify({
+        schemaVersion: 1,
+        students: data.students,
+        teachers: data.teachers,
+      }),
+    )
     .digest("hex");
   const queries: SqlStatement[] = [
     { text: "SELECT pg_advisory_xact_lock(202335)" },
@@ -17,6 +27,27 @@ export function buildMigrationPlan(schema: string, input: DirectoryData) {
       .map((text) => ({ text: text.trim() }))
       .filter((query) => query.text),
   ];
+  queries.push({
+    text: `CREATE TABLE IF NOT EXISTS cengfan.schema_migrations (version text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`,
+  });
+  for (const upgrade of upgrades) {
+    if (
+      !/^\d+_[a-z_]+$/.test(upgrade.version) ||
+      upgrade.sql.includes("$schema_migration$")
+    )
+      throw new Error("Invalid migration metadata");
+    const checksum = createHash("sha256").update(upgrade.sql).digest("hex");
+    queries.push({
+      text: `DO $schema_migration$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM cengfan.schema_migrations WHERE version = '${upgrade.version}') THEN
+        ${upgrade.sql.replaceAll(/^-- statement-breakpoint\s*$/gm, "")}
+        INSERT INTO cengfan.schema_migrations (version, checksum) VALUES ('${upgrade.version}', '${checksum}');
+      ELSIF NOT EXISTS (SELECT 1 FROM cengfan.schema_migrations WHERE version = '${upgrade.version}' AND checksum = '${checksum}') THEN
+        RAISE EXCEPTION 'Applied migration checksum mismatch';
+      END IF;
+    END; $schema_migration$;`,
+    });
+  }
   const studentsIndex = queries.length;
   queries.push({
     text: `INSERT INTO cengfan.students (id, name, school, city, province, major, sort_order)
@@ -73,8 +104,10 @@ export function renderMigrationSql(queries: SqlStatement[]) {
     const sql = query.text.replace(/\$(\d+)/g, (_, position: string) => {
       const value = query.values?.[Number(position) - 1];
       if (value === null) return "NULL";
-      if (typeof value === "number" && Number.isFinite(value)) return String(value);
-      if (typeof value === "string") return "'" + value.replaceAll("'", "''") + "'";
+      if (typeof value === "number" && Number.isFinite(value))
+        return String(value);
+      if (typeof value === "string")
+        return "'" + value.replaceAll("'", "''") + "'";
       throw new Error("Unsupported SQL parameter");
     });
     return sql.endsWith(";") ? sql : sql + ";";

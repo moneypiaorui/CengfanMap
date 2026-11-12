@@ -36,7 +36,14 @@ beforeAll(async () => {
     new URL("../db/migrations/001_initial.sql", import.meta.url),
     "utf8",
   );
-  await execute(buildMigrationPlan(schema, snapshot).queries);
+  const sql = await readFile(
+    new URL("../db/migrations/002_destinations.sql", import.meta.url),
+    "utf8",
+  );
+  await execute(
+    buildMigrationPlan(schema, snapshot, [{ version: "002_destinations", sql }])
+      .queries,
+  );
 });
 afterAll(async () => {
   await db.close();

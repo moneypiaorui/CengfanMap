@@ -1,4 +1,5 @@
 const artwork = {
+  update: <path d="m14 5 5 5M4 20l4-1 12-12a2.1 2.1 0 0 0-3-3L5 16z" />,
   teachers: (
     <>
       <path d="M3 4.5h6a4 4 0 0 1 3 1.2 4 4 0 0 1 3-1.2h6v15h-6a4 4 0 0 0-3 1.2 4 4 0 0 0-3-1.2H3z" />

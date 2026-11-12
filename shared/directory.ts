@@ -1,3 +1,6 @@
+import { parseDestination } from "./destinations.ts";
+import type { Destination } from "./destinations.ts";
+
 export interface Student {
   id: string;
   name: string;
@@ -20,6 +23,7 @@ export interface DirectoryData {
   schemaVersion: 1;
   students: Student[];
   teachers: Teacher[];
+  destinations: Destination[];
 }
 
 class InvalidDirectoryDataError extends Error {
@@ -110,5 +114,15 @@ export function parseDirectoryData(value: unknown): DirectoryData {
   });
   uniqueIds(students);
   uniqueIds(teachers);
-  return { schemaVersion: 1, students, teachers };
+  const rawDestinations = payload.destinations ?? [];
+  if (!Array.isArray(rawDestinations) || rawDestinations.length > 10000)
+    throw new InvalidDirectoryDataError();
+  const destinations = rawDestinations.map(parseDestination);
+  uniqueIds(destinations);
+  const studentIds = new Set(students.map((student) => student.id));
+  if (
+    destinations.some((destination) => !studentIds.has(destination.studentId))
+  )
+    throw new InvalidDirectoryDataError();
+  return { schemaVersion: 1, students, teachers, destinations };
 }

@@ -1,25 +1,48 @@
 import { useRef, useState } from "react";
 import { filterStudents, getProvinceNames } from "../lib/students";
 import type { Student } from "../../shared/directory";
+import { stages, destinationKinds } from "../../shared/destinations";
+import type { Destination } from "../../shared/destinations";
 import Icon from "./Icon";
 
 interface StudentDirectoryProps {
   students: Student[];
+  destinations: Destination[];
+  initialLatest: boolean;
   initialProvince: string;
   initialCity: string;
 }
 
 export default function StudentDirectory({
   students,
+  destinations,
+  initialLatest,
   initialProvince,
   initialCity,
 }: StudentDirectoryProps) {
   const [query, setQuery] = useState("");
+  const [history, setHistory] = useState(initialLatest);
   const [province, setProvince] = useState(initialProvince);
   const [city, setCity] = useState(initialCity);
   const searchRef = useRef<HTMLInputElement>(null);
-  const provinceNames = getProvinceNames(students);
-  const filtered = filterStudents(students, query, province, city);
+  const studentsById = new Map(
+    students.map((student) => [student.id, student]),
+  );
+  const destinationsById = new Map(
+    destinations.map((destination) => [destination.id, destination]),
+  );
+  const records = history
+    ? destinations.map((destination) => ({
+        ...studentsById.get(destination.studentId)!,
+        id: destination.id,
+        school: destination.organization,
+        major: destination.detail,
+        province: destination.province,
+        city: destination.city,
+      }))
+    : students;
+  const provinceNames = getProvinceNames(records);
+  const filtered = filterStudents(records, query, province, city);
   const hasFilters = Boolean(query || province || city);
 
   function clearFilters() {
@@ -31,6 +54,14 @@ export default function StudentDirectory({
 
   return (
     <div className="student-directory">
+      <div className="directory-modes" role="group" aria-label="去向记录">
+        <button aria-pressed={!history} onClick={() => setHistory(false)}>
+          本科录取
+        </button>
+        <button aria-pressed={history} onClick={() => setHistory(true)}>
+          后续去向
+        </button>
+      </div>
       <div
         className="directory-filters"
         role="search"
@@ -45,7 +76,11 @@ export default function StudentDirectory({
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索姓名、学校、城市、专业"
+              placeholder={
+                history
+                  ? "搜索姓名、单位、城市、专业或岗位"
+                  : "搜索姓名、学校、城市、专业"
+              }
             />
           </label>
           {query && (
@@ -82,7 +117,8 @@ export default function StudentDirectory({
       </div>
       <div className="directory-summary">
         <p role="status">
-          {city || province || "全部同学"} · 共 {filtered.length} 人
+          {city || province || "全部同学"} · 共 {filtered.length}{" "}
+          {history ? "条记录" : "人"}
         </p>
         {hasFilters && (
           <button className="clear-filters" onClick={clearFilters}>
@@ -102,35 +138,61 @@ export default function StudentDirectory({
             <thead>
               <tr>
                 <th scope="col">姓名</th>
-                <th scope="col">学校</th>
+                {history && <th scope="col">阶段 / 年份</th>}
+                <th scope="col">{history ? "去向 / 学校或单位" : "学校"}</th>
                 <th scope="col">城市</th>
                 <th scope="col">省份</th>
-                <th scope="col">专业</th>
+                <th scope="col">{history ? "专业 / 岗位" : "专业"}</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((student) => (
-                <tr className="student-row" key={student.id}>
-                  <th scope="row">{student.name}</th>
-                  <td>{student.school}</td>
-                  <td>{student.city}</td>
-                  <td>{student.province}</td>
-                  <td>
-                    {student.major === "待补充" ? (
-                      <span className="muted">待补充</span>
-                    ) : (
-                      student.major
+              {filtered.map((student) => {
+                const destination = destinationsById.get(student.id);
+                return (
+                  <tr className="student-row" key={student.id}>
+                    <th scope="row">{student.name}</th>
+                    {history && destination && (
+                      <td>
+                        {stages[destination.stage]}
+                        <br />
+                        {destination.year}
+                      </td>
                     )}
-                  </td>
-                </tr>
-              ))}
+                    <td>
+                      {history && destination && (
+                        <span className="destination-kind">
+                          {destinationKinds[destination.kind]}
+                        </span>
+                      )}
+                      {student.school}
+                    </td>
+                    <td>{student.city}</td>
+                    <td>{student.province}</td>
+                    <td>
+                      {student.major === "待补充" ? (
+                        <span className="muted">待补充</span>
+                      ) : (
+                        student.major
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
         <div className="empty-results">
-          <h3>还没有找到同学</h3>
-          <p>试试其他关键词，或清除省份、城市筛选。</p>
+          <h3>
+            {history && !destinations.length
+              ? "还没有公开的后续去向"
+              : "还没有找到同学"}
+          </h3>
+          <p>
+            {history && !destinations.length
+              ? "通过右侧“更新去向”填写，审核通过后会展示在这里。"
+              : "试试其他关键词，或清除省份、城市筛选。"}
+          </p>
           <button onClick={clearFilters}>查看全部同学</button>
         </div>
       )}
