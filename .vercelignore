@@ -8,4 +8,3 @@ tests/
 playwright.config.ts
 README.md
 .env*
-.github/
