@@ -1,12 +1,21 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import api from "../api/directory.ts";
-import auth from "../api/auth/[...path].ts";
+import session from "../api/auth/get-session.ts";
+import token from "../api/auth/token.ts";
+import signOut from "../api/auth/sign-out.ts";
+import sendCode from "../api/auth/email-otp/send-verification-otp.ts";
+import signIn from "../api/auth/sign-in/email-otp.ts";
 import submissions from "../api/submissions.ts";
 import review from "../api/review.ts";
 const routes: Record<string, (request: Request) => Promise<Response>> = {
   "/api/directory": api.fetch,
   "/api/submissions": submissions.fetch,
   "/api/review": review.fetch,
+  "/api/auth/get-session": session.fetch,
+  "/api/auth/token": token.fetch,
+  "/api/auth/sign-out": signOut.fetch,
+  "/api/auth/email-otp/send-verification-otp": sendCode.fetch,
+  "/api/auth/sign-in/email-otp": signIn.fetch,
 };
 
 export function directoryMiddleware(
@@ -15,7 +24,7 @@ export function directoryMiddleware(
   next: (error?: unknown) => void,
 ) {
   const path = request.url?.split("?")[0] ?? "";
-  const handle = path.startsWith("/api/auth/") ? auth.fetch : routes[path];
+  const handle = routes[path];
   if (!handle) return next();
   const method = request.method ?? "GET";
   const headers = new Headers();

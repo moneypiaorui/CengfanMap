@@ -25,6 +25,8 @@
 
 登录使用 Neon Managed Better Auth，应用通过官方 SDK 的同源 `/api/auth/*` 代理管理 HttpOnly 会话 Cookie，浏览器不依赖第三方 Cookie。提交和审核请求携带 SDK 返回的短期 JWT；退出结束浏览器会话，已签发 JWT 在到期前仍可能有效。
 
+Vercel Functions 使用与接口路径对应的文件入口，包括多层的 `api/auth/email-otp/send-verification-otp.ts` 和 `api/auth/sign-in/email-otp.ts`。所有入口共用 `server/auth-proxy.ts`，本地开发与预览也使用这些相同入口。回归测试覆盖实际 SDK 转发、方法和来源校验，以及发送限流、服务不可用和退出失败的界面反馈；发布后还需核对 Vercel 上的真实路由和邮件收取。
+
 服务端环境变量：`NEON_AUTH_BASE_URL`（对应数据库分支的 Auth URL）、`NEON_AUTH_COOKIE_SECRET`（至少 32 字符的随机值）、`ADMIN_EMAIL`。不要加 `VITE_` 前缀，也不要提交 `.env.local`。
 
 预览使用独立 Neon `work` 分支。**正式启用前需要在正式数据库分支开启 Auth、配置专用 SMTP、添加正式域名并关闭 localhost，然后运行迁移、配置正式环境变量、部署。** 测试分支的默认共享邮件通道只用于开发验证。参见 [Neon Auth 正式发布要求](https://neon.com/docs/auth/production-checklist)。
@@ -135,7 +137,7 @@ Vercel 项目 `cengfan-map` 已绑定 `moneypiaorui/CengfanMap`。推送 `work` 
 api/directory.ts           公开名单和已审核去向
 api/submissions.ts         本人提交与提交记录
 api/review.ts              管理员审核
-api/auth/[...path].ts      官方 Neon Auth 同源代理
+api/auth/                 显式 Neon Auth 同源代理路由（会话、验证码、登录、退出）
 server/                    数据库读取、HTTP 响应和本地中间件
 shared/directory.ts        接口类型与数据验证
 db/

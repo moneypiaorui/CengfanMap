@@ -7,6 +7,10 @@
     "api/directory.ts": { "maxDuration": 15 },
     "api/submissions.ts": { "maxDuration": 15 },
     "api/review.ts": { "maxDuration": 15 },
-    "api/auth/[...path].ts": { "maxDuration": 15 }
+    "api/auth/get-session.ts": { "maxDuration": 15 },
+    "api/auth/token.ts": { "maxDuration": 15 },
+    "api/auth/sign-out.ts": { "maxDuration": 15 },
+    "api/auth/email-otp/send-verification-otp.ts": { "maxDuration": 15 },
+    "api/auth/sign-in/email-otp.ts": { "maxDuration": 15 }
   }
 }

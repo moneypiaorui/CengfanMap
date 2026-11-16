@@ -36,6 +36,38 @@ const session = (email = "student@example.test") => ({
     updatedAt: "2026-01-01T00:00:00Z",
   },
 });
+for (const failure of [
+  { status: 429, code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试。" },
+  { status: 503, code: "AUTH_NOT_CONFIGURED", message: "邮箱登录服务暂时不可用，请稍后重试。" },
+  { status: 404, code: "NOT_FOUND", message: "邮箱登录服务暂时不可用，请稍后重试。" },
+]) {
+  test(`email send failure ${failure.status} keeps the form recoverable and explains the cause`, async ({ page }) => {
+    await page.route("**/api/auth/get-session**", (route) => route.fulfill({ json: null }));
+    await page.route("**/api/auth/email-otp/send-verification-otp", (route) =>
+      route.fulfill({ status: failure.status, json: { code: failure.code } }),
+    );
+    await page.goto("/#review");
+    await page.getByLabel("邮箱", { exact: true }).fill("student@example.test");
+    await page.getByRole("button", { name: "获取验证码", exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveText(failure.message);
+    await expect(page.getByLabel("邮箱验证码", { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("邮箱", { exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "获取验证码", exact: true })).toBeEnabled();
+  });
+}
+
+test("a failed sign-out leaves the account visible and reports the failure", async ({ page }) => {
+  await page.route("**/api/auth/get-session**", (route) => route.fulfill({ json: session() }));
+  await page.route("**/api/review", (route) => route.fulfill({ json: { submissions: [] } }));
+  await page.route("**/api/auth/sign-out", (route) =>
+    route.fulfill({ status: 503, json: { error: "SERVICE_UNAVAILABLE" } }),
+  );
+  await page.goto("/#review");
+  await page.getByRole("button", { name: "退出登录", exact: true }).click();
+  await expect(page.getByText("暂时无法退出，请重试。", { exact: true })).toBeVisible();
+  await expect(page.getByText("已验证：student@example.test", { exact: true })).toBeVisible();
+});
+
 test("email verification leads to a private pending submission with visible status", async ({
   page,
 }) => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { authClient, sendSignInCode, signInWithCode } from "../lib/auth";
+import { authErrorMessage } from "../lib/auth-errors";
 
 export default function EmailGate({
   children,
@@ -28,11 +29,11 @@ export default function EmailGate({
     setError("");
     try {
       const result = await sendSignInCode(email.trim());
-      if (result.error) throw new Error("验证码暂时无法发送，请稍后重试。");
+      if (result.error) throw result.error;
       setSent(true);
       setCooldown(60);
-    } catch {
-      setError("验证码暂时无法发送，请检查邮箱后重试。");
+    } catch (error) {
+      setError(authErrorMessage(error, "send"));
     } finally {
       setBusy(false);
     }
@@ -45,10 +46,10 @@ export default function EmailGate({
     setError("");
     try {
       const result = await signInWithCode(email.trim(), otp);
-      if (result.error) throw new Error("验证码错误或已过期，请重新获取。");
+      if (result.error) throw result.error;
       await refetch();
-    } catch {
-      setError("验证码错误或已过期，请重新获取。");
+    } catch (error) {
+      setError(authErrorMessage(error, "verify"));
     } finally {
       setBusy(false);
     }
@@ -65,7 +66,8 @@ export default function EmailGate({
             onClick={async () => {
               setError("");
               try {
-                await authClient.signOut();
+                const result = await authClient.signOut();
+                if (result.error) throw result.error;
                 await refetch();
                 setSent(false);
                 setOtp("");

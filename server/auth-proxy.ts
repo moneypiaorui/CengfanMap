@@ -12,8 +12,13 @@ const methods = new Map([
 export function authProxy(request: Request) {
   return handleErrors(async () => {
     const path = new URL(request.url).pathname.replace(/^\/api\/auth\//, "");
-    if (methods.get(path) !== request.method)
-      throw new HttpError(404, "NOT_FOUND");
+    const method = methods.get(path);
+    if (!method) throw new HttpError(404, "NOT_FOUND");
+    if (method !== request.method)
+      return Response.json(
+        { error: "METHOD_NOT_ALLOWED" },
+        { status: 405, headers: { ...jsonHeaders, Allow: method } },
+      );
     const baseUrl = process.env.NEON_AUTH_BASE_URL;
     const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET;
     if (!baseUrl || !cookieSecret || cookieSecret.length < 32)
